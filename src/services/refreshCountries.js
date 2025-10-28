@@ -3,7 +3,6 @@ const axios = require('axios');
 const { Country, sequelize } = require('../models');
 const fs = require('fs');
 const path = require('path');
-const { createCanvas } = require('canvas');
 const nodeHtmlToImage = require('node-html-to-image');
 
 const COUNTRIES_API_URL = process.env.COUNTRIES_API_URL;
@@ -11,8 +10,9 @@ const EXCHANGE_API_URL = process.env.EXCHANGE_API_URL;
 
 async function refreshCountries() {
   let countries, exchangeRates;
+  const validationErrors = [];
 
-  // --- Parallel fetch for countries + exchange rates ---
+  // --- Parallel fetch countries + exchange rates ---
   try {
     const [countriesRes, exchangeRes] = await Promise.all([
       axios.get(COUNTRIES_API_URL, { timeout: 10000 }),
@@ -26,8 +26,6 @@ async function refreshCountries() {
     error.details = 'Could not fetch countries or exchange rates';
     throw error;
   }
-
-  const validationErrors = [];
 
   try {
     await sequelize.transaction(async (t) => {
@@ -78,7 +76,7 @@ async function refreshCountries() {
         });
       }
 
-      // --- Bulk insert/update in one query ---
+      // --- Bulk insert/update ---
       if (bulkData.length > 0) {
         await Country.bulkCreate(bulkData, {
           updateOnDuplicate: [
@@ -90,7 +88,7 @@ async function refreshCountries() {
         });
       }
 
-      // --- Metadata table for last_refreshed_at ---
+      // --- Metadata table ---
       await sequelize.query(
         `CREATE TABLE IF NOT EXISTS metadata (
           \`key\` VARCHAR(50) PRIMARY KEY,
@@ -149,8 +147,7 @@ async function generateSummaryImage() {
         <style>
           body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 40px; }
           h1 { color: #333; }
-          p { font-size: 16px; }
-          ul { font-size: 16px; }
+          p, ul { font-size: 16px; }
           li { margin-bottom: 5px; }
           .container { background: #fff; padding: 20px; border-radius: 10px; }
         </style>
@@ -162,14 +159,9 @@ async function generateSummaryImage() {
           <p>Total countries: ${totalCountries}</p>
           <p>Top 5 countries by GDP:</p>
           <ul>
-            ${topCountries
-              .map(
-                (c, i) =>
-                  `<li>${i + 1}. ${c.name} - ${
-                    c.estimated_gdp ? c.estimated_gdp.toLocaleString() : 'N/A'
-                  }</li>`
-              )
-              .join('')}
+            ${topCountries.map((c, i) =>
+              `<li>${i + 1}. ${c.name} - ${c.estimated_gdp ? c.estimated_gdp.toLocaleString() : 'N/A'}</li>`
+            ).join('')}
           </ul>
         </div>
       </body>
@@ -184,6 +176,5 @@ async function generateSummaryImage() {
     html,
   });
 }
-
 
 module.exports = refreshCountries;
