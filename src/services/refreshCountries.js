@@ -4,6 +4,7 @@ const { Country, sequelize } = require('../models');
 const fs = require('fs');
 const path = require('path');
 const { createCanvas } = require('canvas');
+const nodeHtmlToImage = require('node-html-to-image');
 
 const COUNTRIES_API_URL = process.env.COUNTRIES_API_URL;
 const EXCHANGE_API_URL = process.env.EXCHANGE_API_URL;
@@ -134,41 +135,55 @@ async function refreshCountries() {
 
 // --- Generate summary image ---
 async function generateSummaryImage() {
-  const countries = await Country.findAll({
+  const topCountries = await Country.findAll({
     order: [['estimated_gdp', 'DESC']],
     limit: 5,
   });
 
-  const canvas = createCanvas(800, 600);
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#f5f5f5';
-  ctx.fillRect(0, 0, 800, 600);
-
-  ctx.fillStyle = '#333';
-  ctx.font = 'bold 30px Arial';
-  ctx.fillText('Country Summary', 250, 50);
-
-  ctx.font = '16px Arial';
-  ctx.fillText(`Last refreshed: ${new Date().toLocaleString()}`, 50, 90);
-
   const totalCountries = await Country.count();
-  ctx.fillText(`Total countries: ${totalCountries}`, 50, 120);
+  const lastRefreshed = new Date().toLocaleString();
 
-  ctx.fillText('Top 5 countries by GDP:', 50, 160);
-  countries.forEach((c, i) => {
-    ctx.fillText(
-      `${i + 1}. ${c.name} - ${c.estimated_gdp ? c.estimated_gdp.toLocaleString() : 'N/A'}`,
-      70,
-      190 + i * 30
-    );
-  });
+  const html = `
+    <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 40px; }
+          h1 { color: #333; }
+          p { font-size: 16px; }
+          ul { font-size: 16px; }
+          li { margin-bottom: 5px; }
+          .container { background: #fff; padding: 20px; border-radius: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Country Summary</h1>
+          <p>Last refreshed: ${lastRefreshed}</p>
+          <p>Total countries: ${totalCountries}</p>
+          <p>Top 5 countries by GDP:</p>
+          <ul>
+            ${topCountries
+              .map(
+                (c, i) =>
+                  `<li>${i + 1}. ${c.name} - ${
+                    c.estimated_gdp ? c.estimated_gdp.toLocaleString() : 'N/A'
+                  }</li>`
+              )
+              .join('')}
+          </ul>
+        </div>
+      </body>
+    </html>
+  `;
 
   const cacheDir = path.join(__dirname, '../cache');
   if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
 
-  const imagePath = path.join(cacheDir, 'summary.png');
-  await fs.promises.writeFile(imagePath, canvas.toBuffer('image/png'));
+  await nodeHtmlToImage({
+    output: path.join(cacheDir, 'summary.png'),
+    html,
+  });
 }
+
 
 module.exports = refreshCountries;
