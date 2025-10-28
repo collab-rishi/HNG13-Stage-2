@@ -1,48 +1,124 @@
-This is a base node js project template, which anyone can use as it has been prepared, by keeping some of the most important code principles and project management recommendations. Feel free to change anything. 
+# Country Currency & Exchange API
+
+A RESTful API that fetches country data from external APIs, stores it in a MySQL database, and provides CRUD operations with exchange rates and estimated GDP.
+
+## Features
+
+* Fetches countries from [REST Countries API](https://restcountries.com/v2/all)
+* Fetches exchange rates from [Open Exchange Rates API](https://open.er-api.com/v6/latest/USD)
+* Stores country info with `currency_code`, `exchange_rate`, `estimated_gdp`
+* Provides endpoints:
+
+  * `POST /countries/refresh` – fetch & cache countries
+  * `GET /countries` – list countries with filtering and sorting
+  * `GET /countries/:name` – get single country
+  * `DELETE /countries/:name` – delete a country
+  * `GET /status` – total countries & last refresh timestamp
+  * `GET /countries/image` – summary image with top 5 GDP
 
 
-`src` -> Inside the src folder all the actual source code regarding the project will reside, this will not include any kind of tests. (You might want to make separate tests folder)
+## Prerequisites
 
-Lets take a look inside the `src` folder
+* Node.js v18+
+* MySQL 8+
+* `npm` or `yarn`
+* Optional: `canvas` dependencies for image generation (Linux: `sudo apt install libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev build-essential g++`)
 
- - `config` -> In this folder anything and everything regarding any configurations or setup of a library or module will be done. For example: setting up `dotenv` so that we can use the environment variables anywhere in a cleaner fashion, this is done in the `server-config.js`. One more example can be to setup you logging library that can help you to prepare meaningful logs, so configuration for this library should also be done here. 
 
- - `routes` -> In the routes folder, we register a route and the corresponding middleware and controllers to it. 
+## Installation
 
- - `middlewares` -> they are just going to intercept the incoming requests where we can write our validators, authenticators etc. 
+1. **Clone the repo**
 
- - `controllers` -> they are kind of the last middlewares as post them you call you business layer to execute the budiness logic. In controllers we just receive the incoming requests and data and then pass it to the business layer, and once business layer returns an output, we structure the API response in controllers and send the output. 
+```bash
+git clone https://github.com/yourusername/country-api.git
+cd country-api
 
- - `repositories` -> this folder contains all the logic using which we interact the DB by writing queries, all the raw queries or ORM queries will go here.
+### Step 2: Install dependencies
 
- - `services` -> contains the buiness logic and interacts with repositories for data from the database
+```bash
+npm install
 
- - `utils` -> contains helper methods, error classes etc.
+### Step 3: Setup environment variables
 
-### Setup the project
+Create a `.env` file in the root:
 
- - Download this template from github and open it in your favourite text editor. 
- - Go inside the folder path and execute the following command:
-  ```
-  npm install
-  ```
- - In the root directory create a `.env` file and add the following env variables
-    ```
-        PORT=<port number of your choice>
-    ```
-    ex: 
-    ```
-        PORT=3000
-    ```
- - go inside the `src` folder and execute the following command:
-    ```
-      npx sequelize init
-    ```
- - By executing the above command you will get migrations and seeders folder along with a config.json inside the config folder. 
- - If you're setting up your development environment, then write the username of your db, password of your db and in dialect mention whatever db you are using for ex: mysql, mariadb etc
- - If you're setting up test or prod environment, make sure you also replace the host with the hosted db url.
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=yourpassword
+DB_NAME=country_api
+COUNTRIES_API_URL=https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies
+EXCHANGE_API_URL=https://open.er-api.com/v6/latest/USD
+```
 
- - To run the server execute
- ```
- npm run dev
- ```
+### Step 4: Initialize database
+
+```sql
+CREATE DATABASE country_api;
+USE country_api;
+
+-- Countries table
+CREATE TABLE countries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  capital VARCHAR(255),
+  region VARCHAR(255),
+  population BIGINT NOT NULL,
+  currency_code VARCHAR(10),
+  exchange_rate DOUBLE,
+  estimated_gdp DOUBLE,
+  flag_url VARCHAR(255),
+  last_refreshed_at DATETIME
+);
+
+-- Metadata table
+CREATE TABLE metadata (
+  `key` VARCHAR(50) PRIMARY KEY,
+  `value` VARCHAR(255)
+);
+```
+## Running the API
+
+```bash
+npm start
+```
+
+## API Endpoints
+
+| Method | Endpoint             | Description                                                                          |
+| ------ | -------------------- | ------------------------------------------------------------------------------------ |
+| POST   | `/countries/refresh` | Fetch all countries & exchange rates, cache in DB, generate summary image            |
+| GET    | `/countries`         | Get all countries. Query params: `?region=Africa`, `?currency=NGN`, `?sort=gdp_desc` |
+| GET    | `/countries/:name`   | Get a single country by name (case-insensitive)                                      |
+| DELETE | `/countries/:name`   | Delete a country by name                                                             |
+| GET    | `/status`            | Total countries & last refresh timestamp                                             |
+| GET    | `/countries/image`   | Serve cached summary image                                                           |
+
+
+
+## Error Handling
+
+* **400 Bad Request** – validation errors
+* **404 Not Found** – country not found
+* **503 Service Unavailable** – external API unavailable
+* **500 Internal Server Error** – unexpected errors
+
+Sample validation error:
+
+```json
+{
+  "error": "Validation failed",
+  "details": {
+    "currency_code": "is required"
+  }
+}
+```
+
+## Notes
+
+* Random multiplier (1000–2000) is generated fresh on each refresh for `estimated_gdp`
+* Empty currencies → `currency_code = null`, `exchange_rate = null`, `estimated_gdp = 0`
+* `/countries/refresh` updates `last_refreshed_at` in `metadata` table
+* Summary image is saved at `cache/summary.png`
