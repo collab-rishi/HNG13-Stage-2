@@ -30,36 +30,82 @@ async function refreshCountries() {
   // 3️⃣ DB transaction to avoid partial updates
   const transaction = await sequelize.transaction();
   try {
-    const countryRecords = [];
+    //const countryRecords = [];
 
-    for (const country of countriesData) {
-      const currencyCode = country.currencies?.[0]?.code || null;
-      const exchangeRate = currencyCode ? exchangeRates[currencyCode] || null : null;
-      const randomMultiplier = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
+    // for (const country of countriesData) {
+    //   const currencyCode = country.currencies?.[0]?.code || null;
+    //   const exchangeRate = currencyCode ? exchangeRates[currencyCode] || null : null;
+    //   const randomMultiplier = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
 
-      const estimatedGdp = (country.population && exchangeRate)
-        ? (country.population * randomMultiplier) / exchangeRate
-        : 0;
+    //   let estimatedGdp = null; 
 
-      const [record] = await Country.upsert({
+    //   if (currencyCode === null) {
+    //     // Case 1: Currencies array is empty (Requirement: GDP = 0)
+    //     estimatedGdp = 0;
+    //   } else if (exchangeRate !== null) {
+    //     // Case 2: Rate found (Standard calculation)
+    //     estimatedGdp = (country.population * randomMultiplier) / exchangeRate;
+    //   }
+
+    //   const [record] = await Country.upsert({
+    //     name: country.name,
+    //     capital: country.capital || null,
+    //     region: country.region || null,
+    //     population: country.population,
+    //     currency_code: currencyCode,
+    //     exchange_rate: exchangeRate,
+    //     estimated_gdp: estimatedGdp,
+    //     flag_url: country.flag || null,
+    //     last_refreshed_at: refreshedAt
+    //   }, { transaction });
+
+    //   countryRecords.push(record);
+    // }
+
+    // Commit transaction after all upserts
+    //await transaction.commit();
+
+    // 4️⃣ Generate summary image (full array passed)
+
+    // INSERT THIS SECTION into countryService.js / refreshCountries function:
+
+const upsertPromises = countriesData.map(country => {
+    // --- GDP calculation logic starts here (including the required edge cases) ---
+    const currencyCode = country.currencies?.[0]?.code || null;
+    const exchangeRate = currencyCode ? exchangeRates[currencyCode] || null : null;
+    const randomMultiplier = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
+    
+    let estimatedGdp = null; 
+    if (currencyCode === null) {
+      // Case: Currencies array is empty (Requirement: GDP = 0)
+      estimatedGdp = 0;
+    } else if (exchangeRate !== null) {
+      // Case: Rate found (Standard calculation)
+      estimatedGdp = (country.population * randomMultiplier) / exchangeRate;
+    }
+    // Case: Rate not found (Requirement: GDP = null, handled by starting value)
+    
+
+    return Country.upsert({
         name: country.name,
         capital: country.capital || null,
         region: country.region || null,
         population: country.population,
         currency_code: currencyCode,
         exchange_rate: exchangeRate,
-        estimated_gdp: estimatedGdp,
+        estimated_gdp: estimatedGdp, // Use the new variable
         flag_url: country.flag || null,
         last_refreshed_at: refreshedAt
-      }, { transaction });
+    }, { transaction }); // Ensure transaction is passed to each upsert
+});
 
-      countryRecords.push(record);
-    }
+  // Execute all upserts concurrently
+  const countryRecords = await Promise.all(upsertPromises); // This runs all DB operations in parallel.
 
-    // Commit transaction after all upserts
-    await transaction.commit();
+  // Commit transaction after all upserts complete
+  await transaction.commit();
 
-    // 4️⃣ Generate summary image (full array passed)
+
     try {
       await generateSummaryImage(countryRecords, refreshedAt);
     } catch (imgErr) {
