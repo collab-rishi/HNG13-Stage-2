@@ -1,15 +1,13 @@
 'use strict';
 const { Model } = require('sequelize');
 
-
-
-
 module.exports =  (sequelize, DataTypes) => {
   const Country = sequelize.define("Country", {
     name: {
       type: DataTypes.STRING,
       allowNull: false,
       validate: { notEmpty: true },
+      unique: true
     },
     capital: DataTypes.STRING,
     region: DataTypes.STRING,
@@ -26,6 +24,8 @@ module.exports =  (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+  }, {
+    tableName: "CountriesNew"
   });
 
   return Country;
