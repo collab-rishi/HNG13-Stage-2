@@ -4,7 +4,7 @@ const path = require("path");
 require("dotenv").config();
 
 // Use absolute cache directory
-const CACHE_DIR = path.resolve(process.env.CACHE_DIR || "./cache");
+const CACHE_DIR = path.resolve(process.env.CACHE_DIR || "./src/cache");
 
 // Register a fallback font for Linux environments
 // You can bundle a TTF file in your project (e.g., assets/fonts/Roboto-Regular.ttf)

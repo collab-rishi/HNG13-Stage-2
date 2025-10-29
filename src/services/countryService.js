@@ -1,7 +1,7 @@
 const { Op, Sequelize } = require('sequelize'); 
 const axios = require('axios');
 const { Country, sequelize } = require('../models');
-const { generateSummaryImage } = require('../utils/imageUtils');
+const { generateSummaryImage } = require('../services/imageService');
 
 const REST_COUNTRIES_URL = 'https://restcountries.com/v2/all?fields=name,capital,region,population,flag,currencies';
 const EXCHANGE_RATE_URL = 'https://open.er-api.com/v6/latest/USD';

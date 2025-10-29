@@ -9,7 +9,7 @@ const { getSummaryImagePath } = require("../services/imageService")
 async function getSummaryImage(req, res, next) {
   try {
     const imagePath = getSummaryImagePath();
-    //console.log(imagePath);
+    console.log(imagePath);
 
     if (!fs.existsSync(imagePath)) {
       return res.status(404).json({ error: "Summary image not found" });

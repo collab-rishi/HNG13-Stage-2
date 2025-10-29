@@ -1,4 +1,4 @@
-const { createCanvas } = require('canvas');
+const { createCanvas, registerFont } = require("@napi-rs/canvas");
 const fs = require('fs');
 const path = require('path');
 
