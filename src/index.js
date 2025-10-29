@@ -2,7 +2,8 @@ const express = require("express");
 const dotenv = require("dotenv");
 const countryRoutes = require('./routes/countryRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
-const db = require('./models'); ;
+const db = require('./models'); 
+const statusController = require('./controllers/statusController');
 dotenv.config();
 
 const app = express();
@@ -13,14 +14,16 @@ app.use(express.json());
 
 
 
-app.use("/", countryRoutes);
+app.use("/countries", countryRoutes);
+
+app.get('/status', statusController.getStatus);
 
 app.use(errorHandler);
 
 
 
 
-db.sequelize.sync({ alter: true }) // creates/updates tables if needed
+db.sequelize.sync({ alter: true }) 
   .then(() => {
     console.log("Database synced successfully");
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
